@@ -174,6 +174,13 @@ namespace Klak.Hap
             _texture.hideFlags = HideFlags.DontSave;
 
             _updater = new TextureUpdater(_texture, _decoder);
+
+            // WD: 初回フレームの白フラッシュ防止
+            // AsyncSupport=true (D3D11) の場合、decoder の非同期 ACK は decode 完了より先に返るため、
+            // 最初の LateUpdate で未初期化 BC7 テクスチャがそのまま表示されてしまう。
+            // OpenInternal 終了前に 1 フレーム分を同期 decode + upload して texture を確定させる。
+            _decoder.UpdateSync(_time);
+            _updater.UpdateNow();
         }
 
         // WD: 解像度決定ロジック
