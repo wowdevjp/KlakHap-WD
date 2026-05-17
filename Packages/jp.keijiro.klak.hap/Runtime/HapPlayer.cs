@@ -29,6 +29,13 @@ namespace Klak.Hap
         [SerializeField] Renderer _targetRenderer = null;
         [SerializeField] string _targetMaterialProperty = "_MainTex";
 
+        // WD: 解像度オーバーライド (HAP R 対応)
+        // 一部のコーデック (HAP R/Hap7 等) で container metadata から
+        // 解像度を取得できないケースがあるため、Inspector から明示指定を可能にする。
+        [SerializeField] bool _useResolutionOverride = false;
+        [SerializeField] int _overrideWidth = 1920;
+        [SerializeField] int _overrideHeight = 1080;
+
         #endregion
 
         #region Public properties
@@ -144,20 +151,50 @@ namespace Klak.Hap
             _stream = new StreamReader(_demuxer, _time, _speed / 60);
             (_storedTime, _storedSpeed) = (_time, _speed);
 
+            // WD: 解像度決定 (override / fallback ロジック)
+            var (width, height) = ResolveResolution();
+
+            // WD: 診断ログ (1ファイルにつき1回、init 時の状態を記録)
+            Debug.Log($"[HapPlayer] Opened '{resolvedFilePath}': " +
+                $"Demuxer(W={_demuxer.Width}, H={_demuxer.Height}, VideoType=0x{_demuxer.VideoType:X}), " +
+                $"Resolved(W={width}, H={height}, Format={Utility.DetermineTextureFormat(_demuxer.VideoType)}, " +
+                $"Codec={Utility.DetermineCodecType(_demuxer.VideoType)})");
+
             // Decoder instantiation
             _decoder = new Decoder(
-                _stream, _demuxer.Width, _demuxer.Height, _demuxer.VideoType
+                _stream, width, height, _demuxer.VideoType
             );
 
             // Texture initialization
             _texture = new Texture2D(
-                _demuxer.Width, _demuxer.Height,
+                width, height,
                 Utility.DetermineTextureFormat(_demuxer.VideoType), false
             );
             _texture.wrapMode = TextureWrapMode.Clamp;
             _texture.hideFlags = HideFlags.DontSave;
 
             _updater = new TextureUpdater(_texture, _decoder);
+        }
+
+        // WD: 解像度決定ロジック
+        // 1) override=true → 指定値を使用
+        // 2) override=false かつ Demuxer 解像度が無効 (0以下) → warning ログ後に override 値で fallback
+        // 3) それ以外 → Demuxer から取得
+        (int width, int height) ResolveResolution()
+        {
+            if (_useResolutionOverride)
+                return (_overrideWidth, _overrideHeight);
+
+            if (_demuxer.Width <= 0 || _demuxer.Height <= 0)
+            {
+                Debug.LogWarning($"[HapPlayer] Auto-detect resolution failed " +
+                    $"(W={_demuxer.Width}, H={_demuxer.Height}) for '{resolvedFilePath}'. " +
+                    $"Falling back to override ({_overrideWidth}×{_overrideHeight}). " +
+                    $"Enable _useResolutionOverride and set correct values to suppress this warning.");
+                return (_overrideWidth, _overrideHeight);
+            }
+
+            return (_demuxer.Width, _demuxer.Height);
         }
 
         #endregion

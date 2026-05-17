@@ -1,4 +1,4 @@
 namespace Klak.Hap
 {
-    public enum CodecType { Unsupported, Hap, HapQ, HapAlpha }
+    public enum CodecType { Unsupported, Hap, HapQ, HapAlpha, HapR }
 }

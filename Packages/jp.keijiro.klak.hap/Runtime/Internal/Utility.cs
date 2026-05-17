@@ -20,6 +20,7 @@ namespace Klak.Hap
                 case 0xb: return CodecType.Hap;
                 case 0xe: return CodecType.HapAlpha;
                 case 0xf: return CodecType.HapQ;
+                case 0xc: return CodecType.HapR;  // WD: HAP R (Hap7 FOURCC / BC7)
             }
             return CodecType.Unsupported;
         }
