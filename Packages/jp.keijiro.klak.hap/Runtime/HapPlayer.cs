@@ -111,6 +111,30 @@ namespace Klak.Hap
             OpenInternal();
         }
 
+        // WD: 解像度オーバーライド指定込みで Open する overload。
+        // HAP R 等で container metadata から解像度が取れないコーデックを runtime から扱う際に使用。
+        public void Open(string filePath, PathMode pathMode, int overrideWidth, int overrideHeight)
+        {
+            _useResolutionOverride = true;
+            _overrideWidth = overrideWidth;
+            _overrideHeight = overrideHeight;
+            Open(filePath, pathMode);
+        }
+
+        // WD: Open 済みストリームを解放する。GameObject / Component は残るため、その後再度 Open() を呼べる。
+        // PlayClip 切替を runtime で行いたいラッパー (WDUtility.HapRPlayer) のために追加。
+        public void Close()
+        {
+            if (_updater != null) { _updater.Dispose(); _updater = null; }
+            if (_decoder != null) { _decoder.Dispose(); _decoder = null; }
+            if (_stream  != null) { _stream.Dispose();  _stream  = null; }
+            if (_demuxer != null) { _demuxer.Dispose(); _demuxer = null; }
+
+            Utility.Destroy(_texture);
+            _texture = null;
+            _filePath = "";
+        }
+
         public void UpdateNow()
           => LateUpdate();
 
